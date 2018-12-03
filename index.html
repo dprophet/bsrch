@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Draw Features</title>
+    <!-- The line below is only needed for old environments like Internet Explorer and Android 4.x -->
+    <script src="https://cdn.rawgit.com/openlayers/openlayers.github.io/master/en/v5.3.0/build/ol.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <style>
+      .map {
+        height: 600px;
+        width: 95%;
+      }
+    </style>    
+  </head>
+  <body>
+    <div>
+        <textarea rows="5" cols="250" id="bsrch">
+          bsearch formula will be here
+        </textarea>   
+    </div>
+    <div id="map" class="map"></div>
+    <form class="form-inline">
+      <label>Geometry type &nbsp;</label>
+      <select id="type">
+<!--
+        <option value="Point">Point</option>
+        <option value="LineString">LineString</option>
+-->
+        <option value="Polygon">Polygon</option>
+<!--
+        <option value="Circle">Circle</option>
+        <option value="None">None</option>
+-->
+      </select>
+    </form>
+    <script>
+
+      var raster = new ol.layer.Tile({
+        source: new ol.source.OSM()
+      });
+
+      var oSource = new ol.source.Vector({wrapX: false});
+
+      var vector = new ol.layer.Vector({
+        source: oSource
+      });
+
+      var map = new ol.Map({
+        layers: [raster, vector],
+        target: 'map',
+        view: new ol.View({
+          center: [-11000000, 4600000],
+          zoom: 4
+        })
+      });
+
+      var typeSelect = document.getElementById('type');
+
+      var draw; // global so we can remove it later
+      function addInteraction() {
+        var value = typeSelect.value;
+        if (value !== 'None') {
+          
+          var features = oSource.getFeatures();
+          
+          console.log("features=", features);
+
+          // Go through this array and get coordinates of their geometry.
+          features.forEach(function(feature) {
+             var sText = feature.getGeometry().getCoordinates();
+             console.log("foreach sText=", sText);
+             $("bsrch#ExampleMessage").text(sText);
+          });
+        
+          draw = new ol.interaction.Draw({
+            source: oSource,
+            type: typeSelect.value
+          });
+          map.addInteraction(draw);
+          
+          draw.on('drawend', function (event) {
+              console.log("draw.on");
+              var myfeature = event.feature;
+
+
+              var oArray = myfeature.getGeometry().transform('EPSG:3857', 'EPSG:4326').getCoordinates();
+              console.log("oArray.length=", oArray.length);
+
+              console.log("oArray.length=", oArray.length);
+
+              var sBsrch = "=BSRCH(\"COMDTY:VESSEL\",\"Vertices\",\"";
+
+              for (var i = 0; i < oArray[0].length; i++) {
+              	if ( i !== 0 ) {
+              		sBsrch+=",";
+              	}
+
+              	sBsrch+="(" + oArray[0][i][0] + "," + oArray[0][i][1] + ")"
+              }
+
+              sBsrch+="\")";
+
+              console.log("sBsrch=\n", sBsrch);
+
+              $("#bsrch").val(sBsrch);
+          });
+        }
+      }
+
+
+      /**
+       * Handle change event.
+       */
+      typeSelect.onchange = function() {
+        map.removeInteraction(draw);
+        addInteraction();
+      };
+
+      addInteraction();
+    </script>
+  </body>
+</html>
